@@ -41,8 +41,9 @@ func parseHeader(fieldLine []byte)(string,string,error){
 type Headers struct{
 	headers map[string]string
 }
-func (h *Headers) Get(name string) string{
-	return h.headers[strings.ToLower(name)]
+func (h *Headers) Get(name string) (string,bool){
+	str,ok :=  h.headers[strings.ToLower(name)]
+	return str,ok
 }
 
 func (h *Headers) Set(name string,value string){
@@ -50,8 +51,10 @@ func (h *Headers) Set(name string,value string){
 	v,ok := h.headers[name]
 	if ok{
 		h.headers[name] = fmt.Sprintf("%s,%s",v,value)
+		fmt.Printf("%s:%s",name,value)
 	}else{
 		h.headers[name] = value
+		fmt.Printf("%s:%s",name,value)
 	}
 }
 
@@ -60,10 +63,13 @@ func NewHeaders() *Headers{
 		headers: map[string]string{},
 	}
 }
-
-
-
-func (h Headers) Parse(data []byte) (int,bool,error){
+func (h *Headers) ForEach(cb func(n,v string)){
+	for n,v := range h.headers{
+		// this function is executed for every key-value pair
+		cb(n,v)
+	}
+}
+func (h *Headers) Parse(data []byte) (int,bool,error){
 	read:=0
 	done := false
 	for{
@@ -86,7 +92,8 @@ func (h Headers) Parse(data []byte) (int,bool,error){
 			return 0,false,fmt.Errorf("malformed header name(key)")
 		}
 		read += idx+len(rn)
-		h.headers[name] = value
+		// h.headers[name] = value
+		h.Set(name,value)
 	}
 	return read,done,nil
 }

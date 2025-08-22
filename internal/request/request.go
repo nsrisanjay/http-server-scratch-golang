@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"httpFromScratch/internal/headers"
 	"io"
+	"strconv"
 )
 
 // what we are doing in this file of code
@@ -27,6 +28,7 @@ const(
 	StateInit parserState = "init"
 	StateDone parserState = "done"
 	StateError parserState = "Error"
+	StateBody parserState = "Body"
 	StateHeaders parserState = "headers"
 )
 
@@ -34,12 +36,26 @@ type Request struct {
 	RequestLine RequestLine
 	Headers headers.Headers
 	state parserState
+	Body string
+}
+
+func GetInt(headers *headers.Headers,name string,DefaultValue int)(int){
+	valueStr,ok := headers.Get(name)
+	if !ok{
+		return DefaultValue
+	}
+	value,err := strconv.Atoi(valueStr)
+	if err!=nil{
+		return DefaultValue
+	}
+	return value
 }
 
 func newRequest() *Request{
 	return &Request{
 		state: StateInit,
 		Headers: *headers.NewHeaders(),
+		Body: "",
 	}
 }
 
@@ -77,11 +93,18 @@ func parseRequestLine(b []byte)(*RequestLine,int,error){
 	}
 	return rl,read,nil
 }
+func (r *Request) hasBody()bool{
+	length := GetInt(&r.Headers,"content-length",0)
+	return length > 0
+}
 func (r *Request) parse(data []byte) (int,error){
 	read:=0
 outer:
 	for{
 		currentData := data[read:]
+		if len(currentData) == 0{
+			break outer
+		}
 		switch r.state{
 		case StateError:
 			return 0,ERROR_REQUEST_IN_ERROR_STATE
@@ -97,7 +120,7 @@ outer:
 			} 
 			r.RequestLine = *rl
 			read += n
-			r.state = StateDone
+			r.state = StateHeaders
 			
 		case StateHeaders:
 			n,done,err := r.Headers.Parse(currentData)
@@ -109,6 +132,22 @@ outer:
 			}
 			read += n
 			if done{
+				if r.hasBody(){
+					r.state = StateBody
+				}else{
+					r.state = StateDone
+				}
+			}
+		case StateBody:
+			length := GetInt(&r.Headers,"content-length",0)
+			if length == 0{
+				r.state = StateDone
+				break
+			}
+			remaining := min(length - len(r.Body),len(currentData))
+			r.Body += string(currentData[:remaining])
+			read += remaining
+			if len(r.Body) == length{
 				r.state = StateDone
 			}
 		case StateDone:

@@ -70,6 +70,13 @@ func main(){
 		if err!=nil{
 			log.Fatal("error",err)
 		} 
+		// printing request line onto the conosle
 		fmt.Printf("Method: %s\n Target: %s\n Version: %s\n",req.RequestLine.Method,req.RequestLine.RequestTarget,req.RequestLine.HttpVersion)
+		fmt.Printf("Headers:\n")
+		req.Headers.ForEach(func (n,v string){
+			fmt.Printf("-%s:%s\n",n,v)
+		})
+		fmt.Printf("Body :\n%s",req.Body)
+		fmt.Fprintf(conn, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK")
 	}
 }
