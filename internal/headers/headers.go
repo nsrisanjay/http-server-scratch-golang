@@ -57,6 +57,11 @@ func (h *Headers) Set(name string,value string){
 		fmt.Printf("%s:%s",name,value)
 	}
 }
+func (h *Headers) Replace(name string, value string) {
+	name = strings.ToLower(name)
+	h.headers[name] = value
+	fmt.Printf("%s: %s\n", name, value)
+}
 
 func NewHeaders() *Headers{
 	return &Headers{
